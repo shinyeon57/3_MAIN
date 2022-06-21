@@ -36,6 +36,6 @@ int main(void){
     while(1)
     {
         L2_FSMrun();
-        L3_FSMrun(input_thisId);
+        L3_FSMrun();
     }
 }

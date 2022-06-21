@@ -22,18 +22,6 @@ static uint8_t wordLen=0;
 static uint8_t dstid;
 static uint8_t sdu[200];
 
-//***********************************************************************************************//
-static uint8_t originalMode[200];           //mode설정에서 누른 키가 inputword함수로 실행되는 기현상.....
-static uint8_t modeLen=0;
-
-static uint8_t check_pdu[2];
-static uint8_t l3_pdu[2];
-
-
-static uint8_t dst_dnd ;
-static uint8_t my_dnd ;                 //dnd mode 확인용 변수 (0 : dnd(x) || 1 : dnd(o))
-//***********************************************************************************************//
-
 //serial port interface
 static Serial pc(USBTX, USBRX);
 
@@ -46,13 +34,10 @@ static void L3service_processInputWord(void)
     {
         if (c == '\n' || c == '\r')
         {
-            //originalWord[wordLen++] = '\0';
             if(originalWord[0] == '1')                                      //dnd mode 
             {
-                //check_dnd = 1;                                                  //dnd mode check용 
-                //pc.printf("\n! DND MODE ON !\n");
                 L3_event_setEventFlag(L3_event_MODEctrlRcvd_DND);
-                //L3_dnd_timer_startTimer();                             //////timer_dnd on 
+
             }
             else if(originalWord[0] == '2')                                 //connection mode
             {
@@ -73,7 +58,7 @@ static void L3service_processInputWord(void)
                 pc.printf("[ERROR] WRONG INPUT! (%i) TRY AGAIN\n", originalWord[0]);
                 pc.printf("\n:: ENTER THE MODE ::\n1 : DND MODE, 2 : CONNECTION MODE\n");
             }
-            #if 1 //only for SH's macbook
+            #if 1 //only for SY's macbook
             pc.getc();
             #endif
             wordLen = 0;
@@ -89,7 +74,17 @@ static void L3service_processInputWord(void)
         {
             if (c == '\n' || c == '\r')
             {
-                originalWord[wordLen++] = '\0'; //여기서 마지막이나 어딘가를 dnd status로 채워 그다음에 if문을 써서 
+                if (strncmp((const char*)originalWord, "#DND ", 4) == 0)             ////#DND입력                                        
+                {                                                
+                    L3_event_setEventFlag(L3_event_MODEctrlRcvd_DND);
+                    debug_if(DBGMSG_L3, "\n DND MODE ON!\n");
+                }
+                else if (strncmp((const char*)originalWord, "#EXIT ", 5) == 0)       ////#EXIT입력
+                {
+                    L3_event_setEventFlag(L3_event_MODEctrlRcvd_EXIT);               
+                    debug_if(DBGMSG_L3, "\nEXITING THIS CHATTING\n");
+                }
+                originalWord[wordLen++] = '\0'; 
                 L3_event_setEventFlag(L3_event_dataToSend);
                 debug_if(DBGMSG_L3,"word is ready! ::: %s\n", originalWord);
             }
@@ -102,25 +97,9 @@ static void L3service_processInputWord(void)
                     L3_event_setEventFlag(L3_event_dataToSend);
                     pc.printf("\n max reached! word forced to be ready :::: %s\n", originalWord);
                 }
-                else
-                {
-                    if (strncmp((const char*)originalWord, "#DND ", 4) == 0)             ////#DND입력                                        
-                    {    
-                        //check_dnd = 1;                                                  //dnd mode check용   
-                        L3_event_setEventFlag(L3_event_MODEctrlRcvd_DND);
-                        debug_if(DBGMSG_L3, "\n DND MODE ON!\n");
-                        //L3_dnd_timer_startTimer();                                      ////dnd용 2시간 timer시작한다 
-                    }
-                    else if (strncmp((const char*)originalWord, "#EXIT ", 5) == 0)       ////#EXIT입력
-                    {
-                        L3_event_setEventFlag(L3_event_MODEctrlRcvd_EXIT);               
-                        debug_if(DBGMSG_L3, "\nEXITING THIS CHATTING\n");
-                    }
-                }
             }
         }
     }
-    //L3_event_clearEventFlag(L3_event_MODEctrlRcvd);   
 }
 
 //mode 진입을 위한 제어 key SDU 생성=====================================
@@ -187,7 +166,7 @@ void L3_initFSM()
     pc.printf("\n:: ENTER THE MODE ::\n1 : DND MODE, 2 : CONNECTION MODE\n");
 }
 
-void L3_FSMrun(uint8_t input_thisID)
+void L3_FSMrun()
 {   
     
     if (prev_state != main_state)
@@ -200,60 +179,10 @@ void L3_FSMrun(uint8_t input_thisID)
     switch (main_state)
     {
         case L3STATE_IDLE: //IDLE state description                
-
-            if (L3_event_checkEventFlag(L3_event_msgRcvd)) //if data reception event happens
+            
+            if(L3_event_checkEventFlag(L3_event_MODEctrlRcvd_CNN))
             {
-                //여기서 상대방 메세지가 처음으로 올때 보내는 애의 아이디 정보를 받아서 연결을 해버리는 거임 어떻게 하나면
-                //L3_LLI_configReqFunc(L2L3_CFGTYPE_DSTID, dstid); //dstid 에다가 받아온 아이디 정보를 넣어버리면
-                //debug_if(DBGMSG_L3, "\n[L3]CHANGING ID!!! [%i]\n", dstid);
-                main_state = L3STATE_CNN;
-                /*
-                //Retrieving data info.
-                uint8_t* dataPtr = L3_LLI_getMsgPtr();
-                uint8_t size = L3_LLI_getSize();
-
-                debug("\n -------------------------------------------------\nRCVD MSG : %s (length:%i)\n -------------------------------------------------\n", 
-                            dataPtr, size);
-                
-                pc.printf("Give a word to send : ");
-                
-                L3_event_clearEventFlag(L3_event_msgRcvd);
-                */
-            }
-            else if (L3_event_checkEventFlag(L3_event_dataToSend)) //if data needs to be sent (keyboard input)
-            {
-#ifdef ENABLE_CHANGEIDCMD
-                if (strncmp((const char*)originalWord, "changeDstID: ",9) == 0)
-                {
-                    uint8_t dstid = originalWord[9] - '0';
-                    debug("[L3] requesting to change to dest id %i\n", dstid);
-                    L3_LLI_configReqFunc(L2L3_CFGTYPE_DSTID, dstid);
-                }
-                else if (strncmp((const char*)originalWord, "changeSrcID: ",9) == 0)
-                {
-                    uint8_t myid = originalWord[9] - '0';
-                    debug("[L3] requesting to change to srce id %i\n", myid);
-                    L3_LLI_configReqFunc(L2L3_CFGTYPE_SRCID, myid);
-                }
-                else
-#endif
-                {
-                    //msg header setting
-                    strcpy((char*)sdu, (char*)originalWord);
-                    L3_LLI_dataReqFunc(sdu, wordLen);
-                    debug_if(DBGMSG_L3, "[L3] sending msg....\n");
-                }
-                
-                wordLen = 0;
-
-                pc.printf("Give a word to send : ");
-
-                L3_event_clearEventFlag(L3_event_dataToSend);
-            }
-            else if(L3_event_checkEventFlag(L3_event_MODEctrlRcvd_CNN))
-            {
-                L3_event_clearEventFlag(L3_event_MODEctrlRcvd_CNN);
-                //L3_LLI_configReqFunc(L2L3_CFGTYPE_DSTID, dstid);  
+                L3_event_clearEventFlag(L3_event_MODEctrlRcvd_CNN);  
                 L3_event_setEventFlag(L3_event_MODEctrl_CNN);
                 main_state = L3STATE_CNN;
             }
@@ -261,82 +190,81 @@ void L3_FSMrun(uint8_t input_thisID)
             {
                 L3_event_clearEventFlag(L3_event_MODEctrlRcvd_DND);
                 L3_event_setEventFlag(L3_event_MODEctrl_DND);
-                L3_dnd_timer_startTimer(); 
-                my_dnd = L3_dnd_encodeDND();
-                debug_if(DBGMSG_L3, "[L3] MY DND STATE = (%i)\n", my_dnd);
-                pc.printf("is on DND MODE!\n");
+                L3_dnd_timer_startTimer();
+                pc.printf("DND MODE ON!\n"); 
                 main_state = L3STATE_DND;
-            }
-            else if(L3_event_checkEventFlag(L3_event_MODEctrlRcvd_EXIT))
-            {
-                pc.printf("\nEXITING THIS CHATTING\n");
-                L3_event_clearEventFlag(L3_event_MODEctrlRcvd_EXIT);
-                //L3service_processInputMode();                                     
             }
             break;
 
         case L3STATE_DND :                                               ///////////////////state = dnd
             if(L3_event_checkEventFlag(L3_event_MODEctrl_DND))       
-            {
+            { 
                 if(L3_dnd_timer_getTimerStatus() == 0)                    ///////////////////dnd_timeout event happens
                 {
-                    //check_dnd = 0;                                                  //dnd mode check용 
                     L3_event_clearEventFlag(L3_event_MODEctrl_DND);
                     pc.printf("DND MODE END!\n");
+                    //dstid 초기화(연결끊기)
+                    dstid = 0; 
+                    L3_LLI_configReqFunc(L2L3_CFGTYPE_DSTID, dstid);                    
                     main_state = L3STATE_IDLE ;
-                    pc.printf("\n:: ENTER THE MODE ::\n1 : DND MODE, 2 : CONNECTION MODE\n");
-                    
+                    pc.printf("\n:: ENTER THE MODE ::\n1 : DND MODE, 2 : CONNECTION MODE\n");                  
                 }
-                else if(L3_dnd_timer_getTimerStatus() == 1)
+                /*else
                 {
-                    check_pdu[0] = input_thisID ;
-                    check_pdu[1] = my_dnd;
-                    //check_pdu = L3_msg_pdu(l3_pdu, input_thisID, my_dnd);   /////나의 방해금지 모드를 알리기 위해서
-                    debug_if(DBGMSG_L3, "[L3] IN DND id(%i), dnd_status(%i)\n", check_pdu[0], check_pdu[1]);
-                    
-                   //check_pdu = L3_msg_pdu(uint8_t* l3_pdu, uint8_t dnd /*,uint8_t my_id, uint8_t seq*/)
-
-                    //if (L3_event_checkEventFlag(L3_event_msgRcvd)) //if data reception event happens
-                    //{
-                    //    //나의 dnd 상태를 상대방한테 보내야됨 // 매번 보내는 메세지 마다 dnd 상태를 같이 보내야됨 
-                    //}
-                }
+                    L3_event_clearEventFlag(L3_event_dataToSend);
+                }*/
             }
             break;
 
-        case L3STATE_CNN :                                              ///////////////////state = cnn
-
-            if (L3_event_checkEventFlag(L3_event_msgRcvd)) //if data reception event happens
+        case L3STATE_CNN :                                             
+            
+            if(L3_event_checkEventFlag(L3_event_msgRcvd)) 
             {
                 //Retrieving data info.
                 uint8_t* dataPtr = L3_LLI_getMsgPtr();
                 uint8_t size = L3_LLI_getSize();
 
+                if(strncmp((const char*)dataPtr, "#DND",4) == 0)
+                {
+                    pc.printf("\n%i is on DND MODE! EXIT THE CHATTING!\n", dstid);      //상대가 dnd 모드일때
+                    main_state = L3STATE_IDLE;
+                    dstid = 0; 
+                    L3_LLI_configReqFunc(L2L3_CFGTYPE_DSTID, dstid); 
+                    pc.printf("\n:: ENTER THE MODE ::\n1 : DND MODE, 2 : CONNECTION MODE\n");
+                    
+                }
+                else if(strncmp((const char*)dataPtr, "#EXIT",5) == 0)
+                {
+                    pc.printf("\nDst :%i is EXIT! EXIT THE CHATTING!\n", dstid);
+                    main_state = L3STATE_IDLE;
+                    //dstid 초기화(연결끊기)
+                    dstid = 0; 
+                    L3_LLI_configReqFunc(L2L3_CFGTYPE_DSTID, dstid); 
+                    pc.printf("\n:: ENTER THE MODE ::\n1 : DND MODE, 2 : CONNECTION MODE\n");
+                }
+                else
+                {
                 debug("\n -------------------------------------------------\nRCVD MSG : %s (length:%i)\n -------------------------------------------------\n", 
                             dataPtr, size);
-                
+                }
                 pc.printf("Give a word to send : ");
                 
                 L3_event_clearEventFlag(L3_event_msgRcvd);
             }
             else if (L3_event_checkEventFlag(L3_event_dataToSend)) //if data needs to be sent (keyboard input)
             {
-                //여기서 상대방의 dnd 상태를 받아서 IDLE 상태로 돌아가게 만들면 된다. 그리고 dstID 초기화
-                if(check_pdu[0] == dstid)
+                if(L3_event_checkEventFlag(L3_event_MODEctrl_DND))       
                 {
-                
-                debug_if(DBGMSG_L3, "\n[L3]COMPARISION IS WORKING []\n");
-
-                  if(check_pdu[1] == '1')
-                    {
-                        dstid = 0;
-                        main_state = L3STATE_IDLE;
-                    }   
+                if(L3_dnd_timer_getTimerStatus() == 0)                   
+                {                                                
+                    L3_event_clearEventFlag(L3_event_MODEctrl_DND);
+                    pc.printf("DND MODE END!\n");                   //dnd 모드 설정한 애한테
+                    main_state = L3STATE_IDLE ;
+                    dstid = 0; 
+                    L3_LLI_configReqFunc(L2L3_CFGTYPE_DSTID, dstid);
+                    pc.printf("\n:: ENTER THE MODE ::\n1 : DND MODE, 2 : CONNECTION MODE\n");               
                 }
-                else
-                {
-                    debug_if(DBGMSG_L3, "\n[L3]COMPARISION ISN'T WORKING []\n");
-                }
+                }   
 
 #ifdef ENABLE_CHANGEIDCMD
                 if (strncmp((const char*)originalWord, "changeDstID: ",9) == 0)
@@ -370,17 +298,27 @@ void L3_FSMrun(uint8_t input_thisID)
             else if(L3_event_checkEventFlag(L3_event_MODEctrl_CNN))
             {  
                 L3_LLI_configReqFunc(L2L3_CFGTYPE_DSTID, dstid);
+                pc.printf("DstID is %i \n", dstid);
                 debug_if(DBGMSG_L3, "\n[L3]CHANGING ID!!! [%i]\n", dstid);
                 L3_event_clearEventFlag(L3_event_MODEctrl_CNN);
-                //main_state = L3STATE_IDLE;
-                //pc.printf("\n:: ENTER THE MODE ::\n1 : DND MODE, 2 : CONNECTION MODE\n");
             }
-           /* else if(L3_event_checkEventFlag(L3_event_MODEctrlRcvd_EXIT))
+            else if(L3_event_checkEventFlag(L3_event_MODEctrlRcvd_DND))
             {
-                pc.printf("\nEXITING THIS CHATTING\n");
-                main_state = L3STATE_IDLE;                                          ///////state=CNN이고
+                L3_event_clearEventFlag(L3_event_MODEctrlRcvd_DND);
+                L3_event_setEventFlag(L3_event_MODEctrl_DND);
+                L3_dnd_timer_startTimer();
+                wordLen = 0; 
+                main_state = L3STATE_DND;
+            }            
+            else if(L3_event_checkEventFlag(L3_event_MODEctrlRcvd_EXIT))
+            {
+                pc.printf("\nEXITING THIS CHATTING!\n");
+                L3_event_clearEventFlag(L3_event_MODEctrlRcvd_EXIT);
+                dstid = 0; 
+                L3_LLI_configReqFunc(L2L3_CFGTYPE_DSTID, dstid);
+                wordLen = 0; 
+                main_state = L3STATE_IDLE;                                     
             }
-            */
         break;
 
         default :
