@@ -77,7 +77,7 @@ static void L3service_processInputWord(void)
                 if (strncmp((const char*)originalWord, "#DND ", 4) == 0)             ////#DND입력                                        
                 {                                                
                     L3_event_setEventFlag(L3_event_MODEctrlRcvd_DND);
-                    debug_if(DBGMSG_L3, "\n DND MODE ON!\n");
+                    pc.printf("\n DND MODE ON!\n");
                 }
                 else if (strncmp((const char*)originalWord, "#EXIT ", 5) == 0)       ////#EXIT입력
                 {
@@ -242,7 +242,7 @@ void L3_FSMrun()
                 debug("\n -------------------------------------------------\nRCVD MSG : %s (length:%i)\n -------------------------------------------------\n", 
                             dataPtr, size);
                 }
-                pc.printf("Give a word to send : ");
+                pc.printf("::: ");
                 
                 L3_event_clearEventFlag(L3_event_msgRcvd);
             }
@@ -286,13 +286,14 @@ void L3_FSMrun()
                 
                 wordLen = 0;
 
-                pc.printf("Give a word to send : ");
+                pc.printf("::: ");
 
                 L3_event_clearEventFlag(L3_event_dataToSend);
             }
             else if(L3_event_checkEventFlag(L3_event_MODEctrl_CNN))
             {  
                 L3_LLI_configReqFunc(L2L3_CFGTYPE_DSTID, dstid);
+                //여기서 방해금지모드라고 알려줘야됨.
                 pc.printf("DstID is %i \n", dstid);
                 debug_if(DBGMSG_L3, "\n[L3]CHANGING ID!!! [%i]\n", dstid);
                 L3_event_clearEventFlag(L3_event_MODEctrl_CNN);
