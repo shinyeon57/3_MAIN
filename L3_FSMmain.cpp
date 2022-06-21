@@ -178,8 +178,7 @@ void L3_FSMrun()
     //FSM should be implemented here! ---->>>>
     switch (main_state)
     {
-        case L3STATE_IDLE: //IDLE state description                
-            
+        case L3STATE_IDLE: //IDLE state description 
             if(L3_event_checkEventFlag(L3_event_MODEctrlRcvd_CNN))
             {
                 L3_event_clearEventFlag(L3_event_MODEctrlRcvd_CNN);  
@@ -209,10 +208,6 @@ void L3_FSMrun()
                     main_state = L3STATE_IDLE ;
                     pc.printf("\n:: ENTER THE MODE ::\n1 : DND MODE, 2 : CONNECTION MODE\n");                  
                 }
-                /*else
-                {
-                    L3_event_clearEventFlag(L3_event_dataToSend);
-                }*/
             }
             break;
 
