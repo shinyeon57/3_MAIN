@@ -42,10 +42,9 @@ void L3_dnd_timer_timeoutHandler(void)
     L3_event_setEventFlag(L3_event_DND_Timeout);
 }
 
-//timer related functions ---------------------------
 void L3_dnd_timer_startTimer()
 {
-    uint8_t waitTime = 20;//7200;            //2시간
+    uint8_t waitTime = 10;                              //7200; = 2시간
     timer.attach(L3_timer_timeoutHandler, waitTime);
     timerStatus = 1;
 }

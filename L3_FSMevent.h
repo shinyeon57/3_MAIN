@@ -2,14 +2,12 @@ typedef enum L3_event
 {
     L3_event_msgRcvd = 2,
     L3_event_dataToSend = 4,
-    L3_event_MODEctrlRcvd = 5,              //제어정보IND
-    L3_event_MODEctrlRcvd_CNN = 6,          //제어KEYIND
-    L3_event_MODEctrlRcvd_DND = 7,          //제어KEYIND
-    L3_event_MODEctrlRcvd_EXIT = 8,         //제어KEYIND
-    L3_event_DND_Timeout = 9,               //DND TIME OUT
-    L3_event_CNN_Timeout = 10,              //CNN TIME OUT
-    L3_event_MODEctrl_CNN = 11,             //제어정보IND
-    L3_event_MODEctrl_DND = 12              //제어정보IND
+    L3_event_MODEctrlRcvd_CNN = 5,          //제어KEYIND
+    L3_event_MODEctrlRcvd_DND = 6,          //제어KEYIND
+    L3_event_MODEctrlRcvd_EXIT = 7,         //제어KEYIND
+    L3_event_DND_Timeout = 8,               //DND TIME OUT
+    L3_event_MODEctrl_CNN = 9,             //제어정보IND
+    L3_event_MODEctrl_DND = 10              //제어정보IND
 } L3_event_e;
 
 
