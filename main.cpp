@@ -20,23 +20,22 @@ int main(void){
         //source & destination ID setting
     pc.printf(":: ID for this node : ");
     pc.scanf("%d", &input_thisId);
-    //pc.printf(":: ID for the destination : ");            //////idle에서 connection넘어갈 때 필요함
-    //pc.scanf("%d", &input_destId);
+        //pc.printf(":: ID for the destination : ");            //////idle에서 connection넘어갈 때 필요함
+        //pc.scanf("%d", &input_destId);
     pc.getc();
 
     pc.printf("YOUR ID IS %i\n", input_thisId);
-    //pc.printf("endnode : %i, dest : %i\n", input_thisId, input_destId);
+        //pc.printf("endnode : %i, dest : %i\n", input_thisId, input_destId);
 
-    L3service_processInputMode();
+    //L3service_processInputMode();
 
     //initialize lower layer stacks
     L2_initFSM(input_thisId, input_destId);
     L3_initFSM();
-    
-    
+
     while(1)
     {
         L2_FSMrun();
-        L3_FSMrun();
+        L3_FSMrun(input_thisId);
     }
 }
