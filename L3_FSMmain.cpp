@@ -313,6 +313,7 @@ void L3_FSMrun()
                 dstid = 0; 
                 L3_LLI_configReqFunc(L2L3_CFGTYPE_DSTID, dstid);
                 wordLen = 0; 
+                pc.printf("\n:: ENTER THE MODE ::\n1 : DND MODE, 2 : CONNECTION MODE\n"); 
                 main_state = L3STATE_IDLE;                                     
             }
         break;
